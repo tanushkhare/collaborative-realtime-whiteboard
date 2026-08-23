@@ -1,0 +1,147 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Collaborative Real-Time Whiteboard</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="navbar">
+    <div class="nav-container">
+      <div class="logo">⚡ Collaborative Real-Time Whiteboard</div>
+      <div class="badge">Live Microservice Active</div>
+    </div>
+  </header>
+
+  <main class="main-layout" style="grid-template-columns: 1fr;">
+    <section class="panel-left">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+        <div>
+          <h2>Interactive Real-Time Workspace</h2>
+          <p class="subtitle">Multi-user collaborative interaction canvas synchronized over WebSocket.</p>
+        </div>
+        <div style="display:flex; gap:1.25rem; align-items:center;">
+          <label style="font-size:0.85rem; color:#94a3b8;">
+            Color: <input type="color" id="colorPicker" value="#38bdf8" style="background:none; border:none; cursor:pointer; vertical-align:middle;">
+          </label>
+          <label style="font-size:0.85rem; color:#94a3b8;">
+            Stroke: <input type="range" id="lineWidth" min="1" max="15" value="3" style="vertical-align:middle;">
+          </label>
+          <button class="btn primary-btn" onclick="clearCanvas()" style="width:auto; padding:0.4rem 1rem;">Clear Workspace</button>
+          <span id="wsStatus" style="font-size:0.85rem; font-weight:600; color:#f87171;">🔴 Connecting WebSocket...</span>
+        </div>
+      </div>
+
+      <canvas id="canvas" width="1150" height="520" style="background:#0f172a; border:2px solid #334155; border-radius:0.75rem; cursor:crosshair; width:100%; display:block;"></canvas>
+
+      <div class="log-card" style="margin-top:1rem;">
+        <h4>WebSocket Broadcast Log</h4>
+        <div id="logBox" class="terminal-log">Connecting to WebSocket room 'main-room'...</div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const colorPicker = document.getElementById('colorPicker');
+    const lineWidth = document.getElementById('lineWidth');
+    const logBox = document.getElementById('logBox');
+    const wsStatus = document.getElementById('wsStatus');
+
+    let drawing = false;
+    let lastX = 0, lastY = 0;
+    let socket;
+
+    function connectWS() {
+      socket = new WebSocket("ws://127.0.0.1:8000/api/v1/whiteboard/ws/main-room");
+
+      socket.onopen = () => {
+        wsStatus.innerText = "🟢 Live Connected (Room: main-room)";
+        wsStatus.style.color = "#34d399";
+        logBox.innerText = `[${new Date().toLocaleTimeString()}] WebSocket connected to room 'main-room' (ASGI 101 Switching Protocols)`;
+      };
+
+      socket.onclose = () => {
+        wsStatus.innerText = "🔴 Offline (Reconnecting...)";
+        wsStatus.style.color = "#f87171";
+        logBox.innerText += `\n[${new Date().toLocaleTimeString()}] WebSocket disconnected. Reconnecting in 3s...`;
+        setTimeout(connectWS, 3000);
+      };
+
+      socket.onerror = (err) => {
+        console.error("WebSocket error:", err);
+      };
+
+      socket.onmessage = (event) => {
+        const payload = JSON.parse(event.data);
+        if (payload.type === "REMOTE_STROKE") {
+          drawSegment(payload.data);
+        } else if (payload.type === "HISTORY_SYNC") {
+          payload.strokes.forEach(drawSegment);
+          logBox.innerText += `\n[${new Date().toLocaleTimeString()}] Synced ${payload.strokes.length} historical strokes from server.`;
+        }
+      };
+    }
+
+    function drawSegment(data) {
+      ctx.strokeStyle = data.color;
+      ctx.lineWidth = data.lineWidth;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(data.startX, data.startY);
+      ctx.lineTo(data.endX, data.endY);
+      ctx.stroke();
+    }
+
+    function getCanvasCoordinates(e) {
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+      return {
+        x: (e.clientX - rect.left) * scaleX,
+        y: (e.clientY - rect.top) * scaleY
+      };
+    }
+
+    canvas.addEventListener('mousedown', (e) => {
+      drawing = true;
+      const coords = getCanvasCoordinates(e);
+      lastX = coords.x;
+      lastY = coords.y;
+    });
+
+    canvas.addEventListener('mousemove', (e) => {
+      if (!drawing) return;
+      const coords = getCanvasCoordinates(e);
+      const strokeData = {
+        startX: lastX,
+        startY: lastY,
+        endX: coords.x,
+        endY: coords.y,
+        color: colorPicker.value,
+        lineWidth: parseInt(lineWidth.value, 10)
+      };
+
+      drawSegment(strokeData);
+
+      if (socket && socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify(strokeData));
+      }
+
+      lastX = coords.x;
+      lastY = coords.y;
+    });
+
+    window.addEventListener('mouseup', () => { drawing = false; });
+
+    function clearCanvas() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      logBox.innerText += `\n[${new Date().toLocaleTimeString()}] Local canvas cleared.`;
+    }
+
+    connectWS();
+  </script>
+</body>
+</html>
