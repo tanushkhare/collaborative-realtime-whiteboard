@@ -4,8 +4,8 @@ from backend.app.routers import whiteboard_router
 import uvicorn
 
 app = FastAPI(
-    title="Collaborative Real-Time Whiteboard Service",
-    description="High-frequency WebSocket canvas synchronization and multi-room stroke streaming gateway.",
+    title="Collaborative Realtime Whiteboard API",
+    description="WebSocket streaming canvas coordination, event dispatching, and stroke synchronization.",
     version="1.0.0"
 )
 
@@ -20,8 +20,8 @@ app.add_middleware(
 app.include_router(whiteboard_router.router)
 
 @app.get("/health")
-async def health():
-    return {"status": "healthy", "service": "collaborative-realtime-whiteboard", "transport": "WebSockets/ASGI"}
+async def health_check():
+    return {"status": "healthy", "service": "collaborative-realtime-whiteboard"}
 
 if __name__ == "__main__":
     uvicorn.run("backend.main:app", host="0.0.0.0", port=8000, reload=True)

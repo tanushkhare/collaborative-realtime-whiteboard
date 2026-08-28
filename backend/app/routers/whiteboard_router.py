@@ -1,27 +1,33 @@
 ﻿from fastapi import APIRouter, WebSocket, WebSocketDisconnect, HTTPException
-from backend.app.services.canvas_service import manager
-from backend.app.schemas.whiteboard_schema import WhiteboardState
 import json
+from backend.app.schemas.whiteboard_schema import StrokeBroadcast, RoomStateResponse
+from backend.app.services.whiteboard_service import room_manager
 
-router = APIRouter(prefix="/api/v1/whiteboard", tags=["Collaborative Whiteboard"])
+router = APIRouter(prefix="/api/v1/whiteboard", tags=["Collaborative Realtime Whiteboard"])
+
+@router.get("/rooms/{room_id}", response_model=RoomStateResponse)
+async def fetch_room_status(room_id: str):
+    return RoomStateResponse(**room_manager.get_room_state(room_id))
+
+@router.post("/rooms/{room_id}/stroke")
+async def post_stroke(room_id: str, payload: StrokeBroadcast):
+    room_manager.record_stroke(room_id, payload.dict())
+    return {"status": "BROADCASTED", "room_id": room_id}
 
 @router.websocket("/ws/{room_id}")
-async def websocket_canvas_endpoint(websocket: WebSocket, room_id: str):
-    await manager.connect(room_id, websocket)
+async def websocket_endpoint(websocket: WebSocket, room_id: str):
+    await websocket.accept()
+    room_manager.get_or_create_room(room_id)
+    room_manager.active_users[room_id].add(id(websocket))
     try:
         while True:
             raw_data = await websocket.receive_text()
-            event = json.loads(raw_data)
-            await manager.broadcast_stroke(room_id, websocket, event)
+            try:
+                event = json.loads(raw_data)
+                room_manager.record_stroke(room_id, event)
+                await websocket.send_text(json.dumps({"status": "ACK", "event": event}))
+            except json.JSONDecodeError:
+                # Discard malformed frames without crashing socket loop
+                continue
     except WebSocketDisconnect:
-        manager.disconnect(room_id, websocket)
-
-@router.get("/rooms/{room_id}", response_model=WhiteboardState)
-async def get_room_state(room_id: str):
-    active_count = len(manager.active_rooms.get(room_id, []))
-    stroke_count = len(manager.room_history.get(room_id, []))
-    return WhiteboardState(
-        room_id=room_id,
-        active_users=active_count,
-        total_strokes=stroke_count
-    )
+        room_manager.active_users[room_id].discard(id(websocket))
