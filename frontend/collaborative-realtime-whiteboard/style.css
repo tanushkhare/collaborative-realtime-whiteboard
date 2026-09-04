@@ -1,0 +1,23 @@
+﻿* { margin:0; padding:0; box-sizing:border-box; font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+body { background:#0b1120; color:#f8fafc; min-height:100vh; }
+.top-nav { background:#0f172a; border-bottom:1px solid #1e293b; padding:0.85rem 2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem; position:sticky; top:0; z-index:100; }
+.nav-brand { font-size:1.1rem; font-weight:700; color:#38bdf8; }
+.tab-group { display:flex; gap:0.5rem; flex-wrap:wrap; }
+.tab-btn { background:#1e293b; border:1px solid #334155; color:#94a3b8; padding:0.45rem 1rem; border-radius:0.4rem; font-size:0.85rem; font-weight:600; cursor:pointer; transition:0.2s; }
+.tab-btn:hover, .tab-btn.active { background:#2563eb; color:#fff; border-color:#2563eb; }
+.tab-pane { display:none; max-width:1250px; margin:2rem auto; padding:0 1.5rem; }
+.tab-pane.active { display:block; }
+.grid-2col { display:grid; grid-template-columns:1.2fr 1fr; gap:1.5rem; }
+@media (max-width:900px) { .grid-2col { grid-template-columns:1fr; } }
+.card { background:#1e293b; border:1px solid #334155; border-radius:0.75rem; padding:1.5rem; }
+.subtitle { color:#94a3b8; font-size:0.9rem; margin-bottom:1rem; }
+.code-input, .text-input { width:100%; background:#0f172a; border:1px solid #334155; border-radius:0.4rem; padding:0.75rem; color:#fff; font-size:0.9rem; margin-top:0.4rem; margin-bottom:0.8rem; }
+.btn { padding:0.75rem 1.5rem; border-radius:0.4rem; border:none; font-weight:600; cursor:pointer; font-size:0.95rem; width:100%; margin-top:0.8rem; }
+.btn-primary { background:#2563eb; color:#fff; }
+.telemetry-box { background:#0f172a; border-radius:0.4rem; padding:0.75rem; font-family:monospace; font-size:0.8rem; color:#34d399; margin-top:1rem; white-space:pre-line; }
+.metric-row { display:flex; gap:1rem; }
+.metric-box { flex:1; background:#0f172a; border:1px solid #334155; border-radius:0.5rem; padding:1rem; text-align:center; }
+.metric-box .label { font-size:0.8rem; color:#94a3b8; display:block; }
+.metric-box .val { font-size:1.6rem; font-weight:700; color:#38bdf8; }
+.spec-list { list-style:inside; color:#cbd5e1; font-size:0.9rem; line-height:1.7; }
+.code-box { background:#0f172a; padding:1.25rem; border-radius:0.5rem; font-family:monospace; font-size:0.85rem; color:#38bdf8; white-space:pre-wrap; border:1px solid #334155; line-height:1.5; }
