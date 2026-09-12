@@ -1,21 +1,19 @@
 ﻿from pydantic import BaseModel, Field
-from typing import List, Dict, Any, Optional
-from datetime import datetime
+from typing import List, Optional, Dict, Any
 
 class StrokePoint(BaseModel):
-    x: float
-    y: float
-    color: Optional[str] = "#000000"
-    width: Optional[int] = 2
+    x: float = Field(..., description="Canvas X coordinate")
+    y: float = Field(..., description="Canvas Y coordinate")
 
-class StrokeBroadcast(BaseModel):
-    room_id: str
-    user_id: str
-    action: str = "DRAW_STROKE"
-    points: List[StrokePoint]
+class StrokePayload(BaseModel):
+    room_id: str = Field(default="main-room")
+    user_id: str = Field(..., description="Client identifier")
+    color: str = Field(default="#38bdf8")
+    stroke_width: int = Field(default=3, ge=1, le=20)
+    points: List[StrokePoint] = Field(..., min_length=1)
 
-class RoomStateResponse(BaseModel):
+class WhiteboardRoomStatus(BaseModel):
     room_id: str
-    active_connections: int
-    total_strokes_recorded: int
-    last_updated: str
+    active_peers: int
+    persisted_strokes: int
+    status: str

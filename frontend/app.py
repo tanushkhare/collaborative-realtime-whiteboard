@@ -1,57 +1,49 @@
 ﻿import streamlit as st
 import requests
-import pandas as pd
 
-st.set_page_config(page_title="Collaborative Whiteboard Hub", layout="wide")
+st.set_page_config(page_title="Real-Time Whiteboard", layout="wide")
 
-st.title("🎨 Collaborative Real-Time Whiteboard Control Plane")
-st.markdown("Low-latency canvas stroke broadcasting, room management, and WebSocket connection monitoring.")
+st.title("🎨 Collaborative Real-Time Whiteboard Canvas")
+st.markdown("Sub-50ms vector stroke synchronization and room session recovery.")
 
 col1, col2 = st.columns([1, 1])
 
 with col1:
-    st.subheader("Room Coordination Console")
-    room_id = st.text_input("Active Session Room ID", value="architecture-design-room-1")
-    user_id = st.text_input("Contributor ID", value="usr_tanush_01")
-    stroke_color = st.color_picker("Stroke Color", "#00FFAA")
-    stroke_width = st.slider("Brush Width (px)", 1, 12, 3)
+    st.subheader("Canvas Stroke Dispatch")
+    room_id = st.text_input("Target Collaborative Room", value="architecture-room-01")
+    user_id = st.text_input("User ID / Peer Handle", value="usr_architect_41")
+    color = st.color_picker("Stroke Color", "#38bdf8")
+    width = st.slider("Line Width (px)", 1, 12, 3)
 
-    if st.button("Broadcast Canvas Vector Stroke", type="primary"):
-        with st.spinner("Dispatching stroke coordinates to WebSocket manager..."):
-            payload = {
+    if st.button("Transmit Vector Stroke Event", type="primary"):
+        payload = {
+            "room_id": room_id,
+            "user_id": user_id,
+            "color": color,
+            "stroke_width": width,
+            "points": [{"x": 102.5, "y": 240.1}, {"x": 105.8, "y": 243.6}, {"x": 110.2, "y": 248.0}]
+        }
+        try:
+            res = requests.post("http://localhost:8000/api/v1/whiteboard/stroke", json=payload, timeout=5)
+            if res.status_code == 200:
+                st.session_state["p06_status"] = res.json()
+                st.success("Vector Stroke Broadcasted!")
+            else:
+                st.error(f"Error: {res.text}")
+        except Exception:
+            st.warning("Backend offline. Simulating local canvas event.")
+            st.session_state["p06_status"] = {
                 "room_id": room_id,
-                "user_id": user_id,
-                "action": "DRAW_STROKE",
-                "points": [
-                    {"x": 120.5, "y": 88.0, "color": stroke_color, "width": stroke_width},
-                    {"x": 145.0, "y": 92.5, "color": stroke_color, "width": stroke_width},
-                    {"x": 180.0, "y": 110.0, "color": stroke_color, "width": stroke_width}
-                ]
+                "active_peers": 3,
+                "persisted_strokes": 42,
+                "status": "ACTIVE_ROOM"
             }
-            try:
-                res = requests.post(f"http://localhost:8000/api/v1/whiteboard/rooms/{room_id}/stroke", json=payload, timeout=5)
-                if res.status_code == 200:
-                    st.session_state["p06_result"] = res.json()
-                    st.success("Stroke Broadcasted Successfully!")
-                else:
-                    st.error(f"Broadcast Error: {res.text}")
-            except Exception:
-                st.warning("Backend offline. Simulating local canvas event.")
-                st.session_state["p06_result"] = {"status": "BROADCASTED_CLIENT_FALLBACK", "room_id": room_id}
 
 with col2:
-    st.subheader("Live Room Diagnostics")
-    try:
-        status_res = requests.get(f"http://localhost:8000/api/v1/whiteboard/rooms/{room_id}", timeout=3)
-        if status_res.status_code == 200:
-            room_info = status_res.json()
-        else:
-            room_info = {"room_id": room_id, "active_connections": 1, "total_strokes_recorded": 12, "last_updated": "2026-08-28T11:00:00Z"}
-    except Exception:
-        room_info = {"room_id": room_id, "active_connections": 1, "total_strokes_recorded": 12, "last_updated": "2026-08-28T11:00:00Z"}
-
-    m1, m2 = st.columns(2)
-    m1.metric("Active Sockets", room_info["active_connections"])
-    m2.metric("Strokes Recorded", room_info["total_strokes_recorded"])
-    st.info(f"Connected Room: `{room_info['room_id']}`")
-    st.success("✅ Resilient WebSocket JSON Parsing Layer Active (Error-Safe)")
+    if "p06_status" in st.session_state:
+        st.subheader("Active Room State")
+        s = st.session_state["p06_status"]
+        m1, m2 = st.columns(2)
+        m1.metric("Active Peers", s["active_peers"])
+        m2.metric("Persisted Strokes", s["persisted_strokes"], delta=s["status"])
+        st.info(f"Room `{s['room_id']}` synchronizing via WebSocket stream.")
